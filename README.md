@@ -1,10 +1,10 @@
-# Containerized CLI Login System with Optional TOTP-Based 2FA
+# Containerized CLI Login System with 2FA
 
 ## Overview
 
-This project is a secure command-line authentication system built in Go. It provides user registration, login, session management, account lockout protection, and optional TOTP-based Multi-Factor Authentication (MFA) compatible with Google Authenticator.
+A secure command-line authentication system built with Go. The application supports user registration, login, session management, account lockout protection, and optional TOTP-based Multi-Factor Authentication (MFA) compatible with Google Authenticator.
 
-The application uses SQLite for persistent storage and can be run locally or inside Docker containers.
+The project is containerized using Docker and stores data in SQLite with persistent storage.
 
 ---
 
@@ -12,80 +12,67 @@ The application uses SQLite for persistent storage and can be run locally or ins
 
 ### Authentication
 
-* User registration with username and password
+* User registration
+* User login
 * Secure password hashing using bcrypt
-* Login with credential verification
+* Password verification using bcrypt
 * Last login tracking
-* Username uniqueness enforcement
+* Input validation
 
-### Account Lockout Protection
+### Account Security
 
-* Failed login attempts are tracked
 * Account lockout after multiple failed login attempts
 * Configurable lockout duration
-* Failed-attempt counter reset after successful authentication
+* Protection against brute-force attacks
 
 ### Multi-Factor Authentication (MFA)
 
-* Optional TOTP-based MFA
+* Enable MFA
+* Disable MFA
+* TOTP-based authentication
 * Compatible with Google Authenticator
-* MFA enable/disable functionality
+* Compatible with Microsoft Authenticator
 * TOTP verification during login
 
 ### Session Management
 
-* Session creation after successful authentication
-* Session persistence in database
-* Configurable session timeout
-* Session expiration handling
+* Session creation after successful login
+* Session expiration
+* Session timeout configuration
 * Logout support
+* Session validation for protected commands
 
 ### Interactive CLI
 
-* Interactive command-based interface
+* Interactive command prompt
 * Command history support
-* Tab completion support
+* Tab completion
+* Dynamic command suggestions
 * Context-aware help command
 * Clear success and error messages
 
-### Persistence
+### Docker Support
 
-* SQLite database storage
-* Database migrations included
-* Docker volume persistence
-* Data survives container restarts
-
-### Security Features
-
-* bcrypt password hashing
-* TOTP-based MFA
-* Account lockout protection
-* Session expiration
-* Input validation
-* No plaintext password storage
+* Dockerized application
+* Docker Compose support
+* Persistent SQLite database storage
+* Easy setup and execution
 
 ---
 
-## Technology Stack
-
-### Backend
+## Tech Stack
 
 * Go
-
-### Database
-
 * SQLite
-* modernc.org/sqlite driver
+* Docker
+* Docker Compose
 
-### Security
+### Go Libraries
 
 * golang.org/x/crypto/bcrypt
 * github.com/pquerna/otp
-
-### Containerization
-
-* Docker
-* Docker Compose
+* github.com/c-bata/go-prompt
+* modernc.org/sqlite
 
 ---
 
@@ -99,15 +86,13 @@ The application uses SQLite for persistent storage and can be run locally or ins
 ├── internals/
 │   ├── auth/
 │   ├── cli/
+│   ├── config/
 │   ├── database/
-│   ├── session/
 │   ├── mfa/
 │   ├── models/
-│   └── config/
+│   └── session/
 │
 ├── migrations/
-│   └── 001_initial_schema.sql
-│
 ├── data/
 │
 ├── Dockerfile
@@ -123,40 +108,40 @@ The application uses SQLite for persistent storage and can be run locally or ins
 
 ### users
 
-| Column          | Description            |
-| --------------- | ---------------------- |
-| id              | Primary key            |
-| username        | Unique username        |
-| password_hash   | bcrypt hashed password |
-| created_at      | Registration timestamp |
-| last_login      | Last successful login  |
-| mfa_enabled     | MFA status             |
-| totp_secret     | TOTP secret            |
-| failed_attempts | Failed login counter   |
-| locked_until    | Account lockout expiry |
+| Column          | Description                  |
+| --------------- | ---------------------------- |
+| id              | Primary key                  |
+| username        | Unique username              |
+| password_hash   | bcrypt hashed password       |
+| created_at      | Registration timestamp       |
+| last_login      | Last successful login        |
+| mfa_enabled     | MFA enabled flag             |
+| totp_secret     | TOTP secret                  |
+| failed_attempts | Failed login counter         |
+| locked_until    | Lockout expiration timestamp |
 
 ### sessions
 
-| Column     | Description                  |
-| ---------- | ---------------------------- |
-| id         | Session identifier           |
-| user_id    | User reference               |
-| token      | Session token                |
-| created_at | Session creation timestamp   |
-| expires_at | Session expiration timestamp |
-| active     | Session status               |
+| Column     | Description             |
+| ---------- | ----------------------- |
+| id         | Session identifier      |
+| user_id    | Associated user         |
+| token      | Session token           |
+| created_at | Session creation time   |
+| expires_at | Session expiration time |
+| active     | Session status          |
 
 ---
 
 ## Configuration
 
-The application uses configurable security settings:
+Application settings are centralized in the configuration package.
 
-| Setting                 | Default Value |
-| ----------------------- | ------------- |
-| Maximum Failed Attempts | 5             |
-| Lockout Duration        | 15 Minutes    |
-| Session Timeout         | 30 Minutes    |
+Examples:
+
+* Maximum failed login attempts
+* Lockout duration
+* Session timeout duration
 
 ---
 
@@ -178,16 +163,34 @@ go run ./cmd/app
 
 ## Running with Docker
 
-### Build and Start
+### Build
 
 ```bash
-docker compose up --build
+docker compose build
+```
+
+### Run Interactive CLI
+
+```bash
+docker compose run --rm app
 ```
 
 ### Stop Containers
 
 ```bash
 docker compose down
+```
+
+### View Running Containers
+
+```bash
+docker ps
+```
+
+### View Logs
+
+```bash
+docker compose logs -f
 ```
 
 ---
@@ -216,14 +219,39 @@ exit
 
 ---
 
+## User Information Displayed After Login
+
+After successful authentication the application automatically displays:
+
+* Username
+* Registration date
+* MFA status
+* Session expiration time
+* Last login time
+
+Example:
+
+```text
+Login successful
+
+Username: john
+Registration Date: 2026-06-17 18:16:15
+MFA Status: Enabled
+Last Login: 2026-06-17 18:16:31
+Session Expiration: 2026-06-17 18:46:31
+```
+
+---
+
 ## Example Workflow
 
 ### Register
 
 ```text
 > register
+
 Username: john
-Password: ********
+Password: password123
 
 Registration successful
 ```
@@ -232,8 +260,9 @@ Registration successful
 
 ```text
 > login
+
 Username: john
-Password: ********
+Password: password123
 
 Login successful
 ```
@@ -244,63 +273,118 @@ Login successful
 > enable-2fa
 ```
 
-Add the generated secret to Google Authenticator and save the account.
+The application generates:
 
-### Login with MFA
+* Secret key
+* Provisioning URL
+
+Add the generated secret to Google Authenticator.
+
+### Login With MFA
 
 ```text
 > login
-Username: john
-Password: ********
-TOTP Code: 123456
 
-Login successful
+Username: john
+Password: password123
+TOTP Code: 123456
 ```
 
-### User Information
+### View User Information
 
 ```text
 > whoami
 ```
 
-Displays:
+### Logout
 
-* Username
-* Registration date
-* MFA status
-* Session expiration time
-* Last login time
+```text
+> logout
+```
 
 ---
 
-## Security Considerations
+## Security Features
 
-* Passwords are never stored in plaintext.
-* Passwords are hashed using bcrypt.
-* Accounts are locked after repeated failed login attempts.
-* TOTP secrets are used exclusively for MFA verification.
-* Sessions automatically expire after the configured timeout.
-* Authentication requires both password and TOTP code when MFA is enabled.
+### Password Security
+
+* Passwords are never stored in plaintext
+* bcrypt hashing is used
+* Password verification uses bcrypt comparison
+
+### Account Lockout
+
+* Failed login attempts are tracked
+* Accounts are temporarily locked after repeated failures
+
+### Multi-Factor Authentication
+
+* TOTP secrets stored securely
+* Google Authenticator compatible
+* Additional authentication factor during login
+
+### Session Security
+
+* Session tokens generated securely
+* Session expiration enforced
+* Logout invalidates active session
 
 ---
 
 ## Persistence
 
-SQLite database files are stored in the `data/` directory.
+SQLite database files are stored in a persistent Docker volume.
 
-When running with Docker, the directory is mounted as a volume, ensuring that user accounts and session data persist across container restarts and rebuilds.
+Data survives:
+
+* Container restarts
+* Docker Compose restarts
+* Application rebuilds
 
 ---
 
-## Future Improvements
+## Testing Checklist
 
-* Unit and integration tests
-* Audit logging
-* Password reset functionality
-* Role-based access control
-* Refresh-token support
-* Account recovery workflows
-* Enhanced MFA enrollment experience
+### Registration
 
-```
-```
+* Create new user
+* Prevent duplicate usernames
+
+### Login
+
+* Correct password succeeds
+* Incorrect password fails
+
+### Lockout
+
+* Trigger account lockout
+* Verify lockout expiration
+
+### MFA
+
+* Enable MFA
+* Login with valid TOTP
+* Reject invalid TOTP
+* Disable MFA
+
+### Sessions
+
+* Create session
+* Validate session
+* Expire session
+* Logout session
+
+### CLI
+
+* Command history
+* Tab completion
+* Help command
+* Dynamic command visibility
+
+### Docker
+
+* Build successfully
+* Run successfully
+* Persist data across restarts
+
+
