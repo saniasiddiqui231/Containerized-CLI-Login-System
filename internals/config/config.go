@@ -1,7 +1,7 @@
 package config
 
 const (
-	MaxFailedAttempts     = 5
-	LockoutMinutes        = 15
-	SessionTimeoutMinutes = 30
+	MaxFailedAttempts     = 3
+	LockoutMinutes        = 2
+	SessionTimeoutMinutes = 2
 )

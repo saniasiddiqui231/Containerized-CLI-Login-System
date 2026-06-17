@@ -136,7 +136,7 @@ func main() {
 
 			fmt.Println("Login successful")
 			fmt.Println("Username:", user.Username)
-
+			fmt.Println("Registration Date:", formatTime(user.CreatedAt))
 			if user.MFAEnabled {
 				fmt.Println("MFA Status: Enabled")
 			} else {
@@ -146,7 +146,7 @@ func main() {
 			if !user.LastLogin.Valid {
 				fmt.Println("Last Login: Never")
 			} else {
-				fmt.Println("Last Login:", user.LastLogin.String)
+				fmt.Println("Last Login:", formatTime(user.LastLogin.String))
 			}
 
 			fmt.Println(
@@ -174,13 +174,33 @@ func main() {
 				continue
 			}
 
-			fmt.Println("Current User")
+			user, err := userRepo.GetUserByID(currentUserID)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+
+			fmt.Println("\nCurrent User")
 			fmt.Println("------------")
-			fmt.Println("Username:", currentUserUsername)
+			fmt.Println("Username:", user.Username)
+			fmt.Println("Registration Date:", formatTime(user.CreatedAt))
+
+			if user.MFAEnabled {
+				fmt.Println("MFA Status: Enabled")
+			} else {
+				fmt.Println("MFA Status: Disabled")
+			}
+
 			fmt.Println(
-				"Session Expires:",
+				"Session Expiration:",
 				currentExpiry.Format("2006-01-02 15:04:05"),
 			)
+
+			if !user.LastLogin.Valid {
+				fmt.Println("Last Login: Never")
+			} else {
+				fmt.Println("Last Login:", formatTime(user.LastLogin.String))
+			}
 
 		case "logout":
 
@@ -297,4 +317,19 @@ func main() {
 			fmt.Println("Unknown command. Type 'help'.")
 		}
 	}
+}
+func formatTime(value string) string {
+
+	t, err := time.Parse(
+		time.RFC3339,
+		value,
+	)
+
+	if err != nil {
+		return value
+	}
+
+	return t.Format(
+		"2006-01-02 15:04:05",
+	)
 }

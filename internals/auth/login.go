@@ -19,9 +19,16 @@ func (s *Service) Login(username, password string) (*models.User, error) {
 	if user.LockedUntil.Valid {
 
 		lockTime, err := time.Parse(
-			"2006-01-02 15:04:05",
+			time.RFC3339,
 			user.LockedUntil.String,
 		)
+
+		if err != nil {
+			lockTime, err = time.Parse(
+				"2006-01-02 15:04:05",
+				user.LockedUntil.String,
+			)
+		}
 
 		if err == nil && lockTime.After(time.Now()) {
 			return nil, errors.New(

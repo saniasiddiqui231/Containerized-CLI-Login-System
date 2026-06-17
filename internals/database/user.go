@@ -45,12 +45,11 @@ func (r *UserRepository) GetUserByUsername(username string) (*models.User, error
 		username,
 		password_hash,
 		mfa_enabled,
-		COALESCE(totp_secret, ''),
+		totp_secret,
 		created_at,
-		COALESCE(last_login, ''),
+		last_login,
 		failed_attempts,
-		COALESCE(locked_until, '')
-		
+		locked_until
 	FROM users
 	WHERE username = ?
 `, username).Scan(
@@ -137,4 +136,39 @@ func (r *UserRepository) DisableMFA(
 	`, userID)
 
 	return err
+}
+func (r *UserRepository) GetUserByID(id int64) (*models.User, error) {
+
+	var user models.User
+
+	err := r.DB.QueryRow(`
+		SELECT
+			id,
+			username,
+			password_hash,
+			mfa_enabled,
+			totp_secret,
+			created_at,
+			last_login,
+			failed_attempts,
+			locked_until
+		FROM users
+		WHERE id = ?
+	`, id).Scan(
+		&user.ID,
+		&user.Username,
+		&user.PasswordHash,
+		&user.MFAEnabled,
+		&user.TOTPSecret,
+		&user.CreatedAt,
+		&user.LastLogin,
+		&user.FailedAttempts,
+		&user.LockedUntil,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
