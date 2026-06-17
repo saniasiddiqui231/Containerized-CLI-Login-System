@@ -9,9 +9,12 @@ import (
 	"time"
 
 	"CLI-login-system/internals/auth"
+	"CLI-login-system/internals/cli"
 	"CLI-login-system/internals/database"
 	"CLI-login-system/internals/mfa"
 	"CLI-login-system/internals/session"
+
+	prompt "github.com/c-bata/go-prompt"
 )
 
 func main() {
@@ -53,21 +56,27 @@ func main() {
 
 	reader := bufio.NewReader(os.Stdin)
 
-	fmt.Println("CLI Login System")
-	fmt.Println("Type 'help' to see available commands.")
+	completer := func(d prompt.Document) []prompt.Suggest {
+		if currentUserID == 0 {
+			return prompt.FilterHasPrefix(
+				cli.GuestCommands(),
+				d.GetWordBeforeCursor(),
+				true,
+			)
+		}
 
-	for {
+		return prompt.FilterHasPrefix(
+			cli.UserCommands(),
+			d.GetWordBeforeCursor(),
+			true,
+		)
+	}
 
-		fmt.Print("> ")
-
-		command, _ := reader.ReadString('\n')
+	executor := func(command string) {
 		command = strings.TrimSpace(command)
-		command = strings.ToLower(command)
 
 		switch command {
-
 		case "register":
-
 			fmt.Print("Username: ")
 			username, _ := reader.ReadString('\n')
 
@@ -78,16 +87,17 @@ func main() {
 				strings.TrimSpace(username),
 				strings.TrimSpace(password),
 			)
-
 			if err != nil {
 				fmt.Println("Error:", err)
-				continue
+				return
 			}
-
 			fmt.Println("Registration successful")
 
 		case "login":
-
+			if currentUserID != 0 {
+				fmt.Println("Already logged in. Logout first.")
+				return
+			}
 			fmt.Print("Username: ")
 			username, _ := reader.ReadString('\n')
 
@@ -98,35 +108,34 @@ func main() {
 				strings.TrimSpace(username),
 				strings.TrimSpace(password),
 			)
-
 			if err != nil {
 				fmt.Println("Login error:", err)
-				continue
+				return
 			}
 
 			if user.MFAEnabled {
-
 				fmt.Print("TOTP Code: ")
-
 				code, _ := reader.ReadString('\n')
 				code = strings.TrimSpace(code)
-
 				if !mfa.Verify(
 					code,
 					user.TOTPSecret.String,
 				) {
-
 					fmt.Println("Invalid TOTP code")
-					continue
+					return
 				}
 			}
 
-			token, expiry, err :=
-				sessionService.Create(user.ID)
+			token, expiry, err := sessionService.Create(user.ID)
+			if err != nil {
+				fmt.Println("Session error:", err)
+				return
+			}
+
 			err = userRepo.UpdateLastLogin(user.ID)
 			if err != nil {
 				fmt.Println("Session error:", err)
-				continue
+				return
 			}
 
 			currentUserID = user.ID
@@ -142,60 +151,49 @@ func main() {
 			} else {
 				fmt.Println("MFA Status: Disabled")
 			}
-
 			if !user.LastLogin.Valid {
 				fmt.Println("Last Login: Never")
 			} else {
 				fmt.Println("Last Login:", formatTime(user.LastLogin.String))
 			}
-
 			fmt.Println(
 				"Session Expiration:",
 				currentExpiry.Format("2006-01-02 15:04:05"),
 			)
 
 		case "whoami":
-
 			if currentUserUsername == "" {
 				fmt.Println("Please login first")
-				continue
+				return
 			}
-
 			if time.Now().After(currentExpiry) {
-
 				currentUserID = 0
 				currentUserUsername = ""
 				currentToken = ""
-
 				fmt.Println(
 					"Session expired. Please login again.",
 				)
-
-				continue
+				return
 			}
-
 			user, err := userRepo.GetUserByID(currentUserID)
 			if err != nil {
 				fmt.Println(err)
-				continue
+				return
 			}
 
 			fmt.Println("\nCurrent User")
 			fmt.Println("------------")
 			fmt.Println("Username:", user.Username)
 			fmt.Println("Registration Date:", formatTime(user.CreatedAt))
-
 			if user.MFAEnabled {
 				fmt.Println("MFA Status: Enabled")
 			} else {
 				fmt.Println("MFA Status: Disabled")
 			}
-
 			fmt.Println(
 				"Session Expiration:",
 				currentExpiry.Format("2006-01-02 15:04:05"),
 			)
-
 			if !user.LastLogin.Valid {
 				fmt.Println("Last Login: Never")
 			} else {
@@ -203,120 +201,104 @@ func main() {
 			}
 
 		case "logout":
-
 			if currentToken == "" {
 				fmt.Println("No active session")
-				continue
+				return
 			}
-
-			err := sessionRepo.
-				DeactivateSession(currentToken)
-
+			err := sessionRepo.DeactivateSession(currentToken)
 			if err != nil {
 				fmt.Println(err)
-				continue
+				return
 			}
-
 			currentUserID = 0
 			currentUserUsername = ""
 			currentToken = ""
 			currentExpiry = time.Time{}
-
 			fmt.Println("Logged out successfully")
 
 		case "enable-2fa":
-
 			if currentUserID == 0 {
 				fmt.Println("Please login first")
-				continue
+				return
 			}
-
 			setup, err := mfa.Generate(
 				currentUserUsername,
 			)
-
 			if err != nil {
 				fmt.Println(err)
-				continue
+				return
 			}
-
 			err = userRepo.EnableMFA(
 				currentUserID,
 				setup.Secret,
 			)
-
 			if err != nil {
 				fmt.Println(err)
-				continue
+				return
 			}
-
 			fmt.Println("MFA Enabled")
 			fmt.Println("Secret:")
 			fmt.Println(setup.Secret)
-
 			fmt.Println("Provisioning URL:")
 			fmt.Println(setup.URL)
 
 		case "disable-2fa":
-
 			if currentUserID == 0 {
 				fmt.Println("Please login first")
-				continue
+				return
 			}
-
 			err := userRepo.DisableMFA(
 				currentUserID,
 			)
-
 			if err != nil {
 				fmt.Println(err)
-				continue
+				return
 			}
-
 			fmt.Println("MFA disabled")
 
 		case "help":
-
 			if currentUserID == 0 {
-
 				fmt.Println("Available Commands:")
 				fmt.Println("register")
 				fmt.Println("login")
 				fmt.Println("help")
 				fmt.Println("exit")
-
-			} else {
-				if time.Now().After(currentExpiry) {
-
-					currentUserID = 0
-					currentUserUsername = ""
-					currentToken = ""
-
-					fmt.Println(
-						"Session expired. Please login again.",
-					)
-
-					continue
-				}
-				fmt.Println("Available Commands:")
-				fmt.Println("whoami")
-				fmt.Println("enable-2fa")
-				fmt.Println("disable-2fa")
-				fmt.Println("logout")
-				fmt.Println("help")
-				fmt.Println("exit")
+				return
 			}
+			if time.Now().After(currentExpiry) {
+				currentUserID = 0
+				currentUserUsername = ""
+				currentToken = ""
+				fmt.Println(
+					"Session expired. Please login again.",
+				)
+				return
+			}
+			fmt.Println("Available Commands:")
+			fmt.Println("whoami")
+			fmt.Println("enable-2fa")
+			fmt.Println("disable-2fa")
+			fmt.Println("logout")
+			fmt.Println("help")
+			fmt.Println("exit")
 
 		case "exit":
-
 			fmt.Println("Goodbye")
-			return
+			os.Exit(0)
 
 		default:
-
 			fmt.Println("Unknown command. Type 'help'.")
 		}
 	}
+
+	fmt.Println("CLI Login System")
+	fmt.Println("Type 'help' to see available commands.")
+
+	p := prompt.New(
+		executor,
+		completer,
+	)
+	p.Run()
 }
 func formatTime(value string) string {
 
