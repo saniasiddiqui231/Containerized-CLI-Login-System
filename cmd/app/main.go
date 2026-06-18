@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -54,8 +53,6 @@ func main() {
 	var currentToken string
 	var currentExpiry time.Time
 
-	reader := bufio.NewReader(os.Stdin)
-
 	completer := func(d prompt.Document) []prompt.Suggest {
 		if currentUserID == 0 {
 			return prompt.FilterHasPrefix(
@@ -73,20 +70,23 @@ func main() {
 	}
 
 	executor := func(command string) {
-		command = strings.TrimSpace(command)
+		args := strings.Fields(command)
+		if len(args) == 0 {
+			return
+		}
 
-		switch command {
+		baseCommand := args[0]
+
+		switch baseCommand {
 		case "register":
-			fmt.Print("Username: ")
-			username, _ := reader.ReadString('\n')
+			if len(args) < 3 {
+				fmt.Println("Usage: register <username> <password>")
+				return
+			}
+			username := args[1]
+			password := args[2]
 
-			fmt.Print("Password: ")
-			password, _ := reader.ReadString('\n')
-
-			err := authService.Register(
-				strings.TrimSpace(username),
-				strings.TrimSpace(password),
-			)
+			err := authService.Register(username, password)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
@@ -98,29 +98,27 @@ func main() {
 				fmt.Println("Already logged in. Logout first.")
 				return
 			}
-			fmt.Print("Username: ")
-			username, _ := reader.ReadString('\n')
+			if len(args) < 3 {
+				fmt.Println("Usage: login <username> <password> [totp_code]")
+				return
+			}
+			username := args[1]
+			password := args[2]
 
-			fmt.Print("Password: ")
-			password, _ := reader.ReadString('\n')
-
-			user, err := authService.Login(
-				strings.TrimSpace(username),
-				strings.TrimSpace(password),
-			)
+			user, err := authService.Login(username, password)
 			if err != nil {
 				fmt.Println("Login error:", err)
 				return
 			}
 
 			if user.MFAEnabled {
-				fmt.Print("TOTP Code: ")
-				code, _ := reader.ReadString('\n')
-				code = strings.TrimSpace(code)
-				if !mfa.Verify(
-					code,
-					user.TOTPSecret.String,
-				) {
+				if len(args) < 4 {
+					fmt.Println("MFA is enabled for this account.")
+					fmt.Println("Please run: login <username> <password> <totp_code>")
+					return
+				}
+				code := args[3]
+				if !mfa.Verify(code, user.TOTPSecret.String) {
 					fmt.Println("Invalid TOTP code")
 					return
 				}
@@ -170,9 +168,7 @@ func main() {
 				currentUserID = 0
 				currentUserUsername = ""
 				currentToken = ""
-				fmt.Println(
-					"Session expired. Please login again.",
-				)
+				fmt.Println("Session expired. Please login again.")
 				return
 			}
 			user, err := userRepo.GetUserByID(currentUserID)
@@ -259,8 +255,8 @@ func main() {
 		case "help":
 			if currentUserID == 0 {
 				fmt.Println("Available Commands:")
-				fmt.Println("register")
-				fmt.Println("login")
+				fmt.Println("register <username> <password>")
+				fmt.Println("login <username> <password> [totp_code]")
 				fmt.Println("help")
 				fmt.Println("exit")
 				return
@@ -269,9 +265,7 @@ func main() {
 				currentUserID = 0
 				currentUserUsername = ""
 				currentToken = ""
-				fmt.Println(
-					"Session expired. Please login again.",
-				)
+				fmt.Println("Session expired. Please login again.")
 				return
 			}
 			fmt.Println("Available Commands:")
@@ -300,8 +294,8 @@ func main() {
 	)
 	p.Run()
 }
-func formatTime(value string) string {
 
+func formatTime(value string) string {
 	t, err := time.Parse(
 		time.RFC3339,
 		value,
