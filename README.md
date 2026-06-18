@@ -303,7 +303,36 @@ TOTP Code: 123456
 ```
 
 ---
+## Testing
 
+The project includes unit tests for the following components:
+
+* Authentication
+* Account lockout logic
+* Password hashing and verification
+* MFA setup generation
+* Session token generation
+* Configuration validation
+
+### Run All Available Tests
+
+```bash
+go test ./...
+```
+
+### Run Tests with Verbose Output
+
+```bash
+go test ./... -v
+```
+
+### Run Authentication Tests Only
+
+```bash
+go test ./internals/auth -v
+```
+
+**Note:** Some packages (such as `cmd/app`, `database`, `models`, and `cli`) currently do not contain unit tests and will appear as `[no test files]`.
 ## Security Features
 
 ### Password Security
