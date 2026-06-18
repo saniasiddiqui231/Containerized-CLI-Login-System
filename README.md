@@ -129,7 +129,7 @@ The project is containerized using Docker and uses SQLite for persistent data st
 
 ```bash
 git clone <repository-url>
-cd CLI-login-system
+cd Containerized-CLI-Login-System
 ```
 
 ### Install Dependencies
