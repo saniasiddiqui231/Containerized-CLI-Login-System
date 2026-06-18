@@ -128,7 +128,7 @@ The project is containerized using Docker and uses SQLite for persistent data st
 ### Clone Repository
 
 ```bash
-git clone [<repository-url>](https://github.com/saniasiddiqui231/Containerized-CLI-Login-System.git)
+git clone https://github.com/saniasiddiqui231/Containerized-CLI-Login-System.git
 cd Containerized-CLI-Login-System
 ```
 
