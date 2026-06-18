@@ -145,55 +145,148 @@ Examples:
 
 ---
 
-## Running Locally
+## Running with Docker
 
-### Install Dependencies
+### Prerequisites
+
+Before running the application, make sure the following are installed:
+
+* Docker Desktop
+* Docker Compose (included with modern Docker Desktop versions)
+
+### Start Docker Desktop
+
+Before running any Docker commands, ensure Docker Desktop is running.
+
+You can verify Docker is available by running:
 
 ```bash
-go mod tidy
+docker version
 ```
 
-### Run Application
+You should see both **Client** and **Server** information.
 
-```bash
-go run ./cmd/app
+If you receive an error such as:
+
+```text
+failed to connect to the docker API
+dockerDesktopLinuxEngine
 ```
+
+Docker Desktop is not running. Start Docker Desktop and wait until it shows that the Docker Engine is running.
 
 ---
 
-## Running with Docker
+### Build the Application
 
-### Build
+From the project root directory:
 
 ```bash
 docker compose build
 ```
 
-### Run Interactive CLI
+This will:
+
+* Download dependencies
+* Build the Go application
+* Create the Docker image
+
+---
+
+### Run the Interactive CLI
+
+Because this is an interactive command-line application, use:
 
 ```bash
 docker compose run --rm app
 ```
 
-### Stop Containers
+You should see:
+
+```text
+CLI Login System
+Type 'help' to see available commands.
+>
+```
+
+---
+
+### Stop the Application
+
+If the application is running, press:
+
+```text
+Ctrl + C
+```
+
+To remove containers:
 
 ```bash
 docker compose down
 ```
 
-### View Running Containers
+---
+
+### Persistence
+
+User data is stored in a persistent SQLite database volume.
+
+Data remains available after:
+
+```bash
+docker compose down
+docker compose run --rm app
+```
+
+For example:
+
+1. Register a user
+2. Exit the application
+3. Start the application again
+4. Login using the same account
+
+The user account should still exist.
+
+---
+
+### Common Commands
+
+Build image:
+
+```bash
+docker compose build
+```
+
+Run application:
+
+```bash
+docker compose run --rm app
+```
+
+View running containers:
 
 ```bash
 docker ps
 ```
 
-### View Logs
+Stop and remove containers:
 
 ```bash
-docker compose logs -f
+docker compose down
 ```
 
----
+View container logs:
+
+```bash
+docker compose logs
+```
+
+Run tests:
+
+```bash
+go test ./... -v
+```
+
 
 ## Available Commands
 
