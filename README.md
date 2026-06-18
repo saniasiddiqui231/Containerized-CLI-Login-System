@@ -9,6 +9,10 @@ The project is containerized using Docker and stores data in SQLite with persist
 ---
 
 ## Features
+### Tests Screenshot
+
+![Tests](Screenshot%20\(159\).png)
+
 
 ### Authentication
 
