@@ -5,12 +5,10 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
-
-	"CLI-login-system/internals/database"
 )
 
 type Service struct {
-	Repo *database.UserRepository
+	Repo UserRepo
 }
 
 func (s *Service) Register(username, password string) error {
